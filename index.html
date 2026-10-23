@@ -1,1 +1,699 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NeonKitsune</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦊</text></svg>" />
+<style>
+  :root {
+    --bg:#0b0b12; --text:#f2f2fa; --muted:#b0b0c6;
+    --accent:#ff2e88; --accent2:#22e6ff;
+    --border:rgba(255,255,255,0.12); --radius:14px; --sidebar-w:260px;
+    --panel-alpha: 0.55;
+    --panel: rgba(18,18,28,var(--panel-alpha));
+    --panel-strong: rgba(18,18,28,calc(var(--panel-alpha) + 0.20));
+    --bubble-alpha: 0.12;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
+
+  #bg-stack { position:fixed; inset:0; z-index:-1; overflow:hidden; background:#05050a; }
+  .bg-layer { position:absolute; inset:0; background-size:cover;
+    background-position: center top;
+    opacity:0; transition:opacity 1.8s ease; transform:scale(1.05);
+    animation:kenburns 20s ease-in-out infinite alternate;
+    filter:brightness(var(--bg-brightness,1.1)) saturate(1.15); }
+  .bg-layer.on { opacity:1; }
+  @keyframes kenburns { from{transform:scale(1.05) translate(0,0);} to{transform:scale(1.14) translate(-2%,-2%);} }
+  #bg-stack::after { content:""; position:absolute; inset:0;
+    background:radial-gradient(ellipse at center, rgba(5,5,10,0.05) 0%, rgba(5,5,10,0.18) 60%, rgba(5,5,10,0.45) 100%);
+    pointer-events:none; }
+
+  #sidebar { position:fixed; top:0; left:0; bottom:0; width:var(--sidebar-w);
+    background:rgba(16,16,26, calc(var(--panel-alpha) + 0.10));
+    backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2);
+    border-right:1px solid var(--border);
+    transform:translateX(-100%); transition:transform 0.35s ease; z-index:40;
+    display:flex; flex-direction:column; padding:16px 14px; }
+  #sidebar.open { transform:translateX(0); }
+  .sidebar-top { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:2px 2px 18px; }
+  .brand { display:flex; align-items:center; gap:8px; font-weight:800; font-size:19px; white-space:nowrap; }
+  .brand .glow { color:var(--accent); text-shadow:0 0 14px var(--accent); }
+  #sidebar-close { background:rgba(255,255,255,0.06); color:var(--muted); border:1px solid var(--border); border-radius:9px; width:34px; height:34px; font-size:16px; cursor:pointer; }
+  .nav { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+  .nav button { width:100%; text-align:left; background:transparent; color:var(--text); border:1px solid transparent; border-radius:10px; padding:11px 12px; font-size:15px; cursor:pointer; display:flex; align-items:center; gap:10px; }
+  .nav button:hover { background:rgba(255,255,255,0.10); }
+  .nav button.active { background:linear-gradient(90deg,rgba(255,46,136,0.30),rgba(34,230,255,0.18)); border-color:rgba(255,46,136,0.70); }
+  .nav button .ico { width:20px; text-align:center; }
+  .sidebar-foot { margin-top:auto; font-size:12px; color:var(--muted); padding:10px 8px 0; }
+
+  #menu-btn { position:fixed; top:14px; left:14px; z-index:50;
+    background:rgba(20,20,31,0.82); backdrop-filter:blur(8px);
+    color:var(--text); border:1px solid var(--border); border-radius:10px;
+    padding:10px 14px; font-size:15px; cursor:pointer; display:flex; align-items:center; gap:8px;
+    transition:left 0.35s ease, opacity 0.25s ease, border-color 0.2s; }
+  @media(max-width:899px){ body.sidebar-open #menu-btn { opacity:0; pointer-events:none; } }
+  @media(min-width:900px){ body.sidebar-open #menu-btn { left:calc(var(--sidebar-w) + 14px); } }
+
+  main { padding:76px 20px 60px; max-width:980px; margin:0 auto; transition:padding-left 0.35s ease; }
+  @media(min-width:900px){ body.sidebar-open main { padding-left:calc(var(--sidebar-w) + 20px); } }
+  .page { display:none; animation:fadein 0.35s ease; }
+  .page.active { display:block; }
+  @keyframes fadein { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+  h1 { font-size:30px; margin:0 0 6px; text-shadow:0 2px 14px rgba(0,0,0,0.75); }
+  h2 { font-size:20px; margin:26px 0 10px; text-shadow:0 2px 10px rgba(0,0,0,0.7); }
+  .sub { color:var(--muted); margin:0 0 24px; text-shadow:0 1px 8px rgba(0,0,0,0.75); }
+
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:16px;
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2);
+    box-shadow:0 8px 32px rgba(0,0,0,0.40); }
+
+  .clickable-card { cursor:pointer; transition:border-color 0.2s, transform 0.15s, box-shadow 0.2s; }
+  .clickable-card:hover { border-color:var(--accent2); transform:translateY(-2px); box-shadow:0 10px 36px rgba(34,230,255,0.18); }
+  .clickable-card:focus-visible { outline:2px solid var(--accent2); outline-offset:2px; }
+
+  .grid { display:grid; gap:14px; }
+  @media(min-width:640px){ .grid.cols-3 { grid-template-columns:repeat(3,1fr); } }
+  .stat { font-size:26px; font-weight:800; }
+  .stat small { display:block; font-size:12px; color:var(--muted); font-weight:500; margin-top:2px; }
+
+  button.primary, button.ghost { border-radius:10px; padding:10px 16px; font-size:15px; cursor:pointer; border:1px solid var(--border); }
+  button.primary { background:linear-gradient(135deg,var(--accent),#b21e6a); color:#fff; border-color:transparent; font-weight:600; }
+  button.ghost { background:rgba(255,255,255,0.06); color:var(--text); }
+  button.ghost:hover { border-color:var(--accent2); color:var(--accent2); }
+
+  input, select { background:rgba(0,0,0,0.45); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:11px 12px; font-size:15px; width:100%; font-family:inherit; }
+  input:focus, select:focus { outline:none; border-color:var(--accent2); }
+  label.field { display:block; font-size:13px; color:var(--muted); margin:12px 0 6px; }
+  input[type=range] { -webkit-appearance:none; appearance:none; height:6px; background:rgba(255,255,255,0.15); border-radius:3px; padding:0; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent); cursor:pointer; }
+  .range-val { display:inline-block; min-width:42px; text-align:right; color:var(--accent2); font-weight:600; margin-left:8px; }
+
+  #chat-log { height:46vh; min-height:260px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:6px 2px; }
+  .msg { max-width:85%; padding:10px 13px; border-radius:12px; line-height:1.45; font-size:15px; white-space:pre-wrap; }
+  .msg.user { align-self:flex-end; background:linear-gradient(135deg,var(--accent),#9c1a5c); color:#fff; }
+  .msg.bot { align-self:flex-start; background:rgba(255,255,255,var(--bubble-alpha)); border:1px solid var(--border); }
+  .rec-list { margin-top:10px; display:grid; gap:8px; }
+  .rec-card { background:rgba(0,0,0,0.45); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .rec-head { padding:10px 12px; cursor:pointer; display:flex; align-items:center; gap:10px; }
+  .rec-head:hover { background:rgba(255,255,255,0.06); }
+  .rec-head img { width:44px; height:60px; object-fit:cover; border-radius:6px; background:#222; }
+  .rec-head .info { flex:1; min-width:0; }
+  .rec-head .info strong { display:block; font-size:14px; }
+  .rec-head .info span { font-size:12px; color:var(--muted); }
+  .rec-head .arrow { font-size:12px; color:var(--muted); transition:transform 0.2s; }
+  .rec-card.open .arrow { transform:rotate(90deg); }
+  .rec-body { display:none; padding:0 12px 12px; font-size:13px; color:var(--muted); line-height:1.5; }
+  .rec-card.open .rec-body { display:block; }
+  .rec-body button { margin-top:8px; }
+  .chat-input-row { display:flex; gap:8px; margin-top:12px; }
+  .chat-input-row input { flex:1; }
+
+  #modal { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; padding:18px; }
+  #modal.open { display:flex; }
+  .modal-box { width:min(920px,100%); background:var(--panel-strong); backdrop-filter:blur(16px); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+  .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .player-wrap { position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; }
+  .player-wrap iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .player-fallback { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:20px; background:rgba(0,0,0,0.9); }
+  .player-fallback p { color:var(--muted); font-size:14px; margin:0; max-width:420px; }
+
+  .list-item { display:flex; gap:12px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px; background:rgba(255,255,255,0.06); }
+  .list-item .meta { flex:1; min-width:0; }
+  .list-item .meta strong { display:block; font-size:15px; margin-bottom:3px; }
+  .list-item .meta span { font-size:13px; color:var(--muted); }
+  .list-item .actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .empty { color:var(--muted); font-size:14px; padding:10px 2px; }
+
+  .roblox-card { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .rbx-avatar { width:96px; height:96px; border-radius:18px; background:linear-gradient(135deg,#e2231a,#7a0f0b); display:grid; place-items:center; font-size:42px; font-weight:900; color:#fff; }
+  .sim-badge { font-size:11px; text-transform:uppercase; color:#ffb02e; border:1px solid rgba(255,176,46,0.5); padding:3px 8px; border-radius:999px; display:inline-block; }
+  .spinner { width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; display:inline-block; animation:spin 0.7s linear infinite; vertical-align:middle; }
+  @keyframes spin { to{transform:rotate(360deg);} }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:rgba(20,20,31,0.95); border:1px solid var(--accent); color:var(--text);
+    padding:10px 16px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none;
+    transition:opacity 0.25s, transform 0.25s; z-index:200; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="bg-stack"></div>
+
+<aside id="sidebar" aria-hidden="true">
+  <div class="sidebar-top">
+    <div class="brand"><span class="glow">🦊</span><span>Neon<span class="glow">Kitsune</span></span></div>
+    <button id="sidebar-close" aria-label="Close menu">✕</button>
+  </div>
+  <nav><ul class="nav">
+    <li><button data-page="dashboard" class="active"><span class="ico">🏠</span> Dashboard</button></li>
+    <li><button data-page="foxai"><span class="ico">🦊</span> Fox AI</button></li>
+    <li><button data-page="watchlist"><span class="ico">📺</span> Watchlist</button></li>
+    <li><button data-page="clips"><span class="ico">🎬</span> Clip Generator</button></li>
+    <li><button data-page="roblox"><span class="ico">🎮</span> Roblox</button></li>
+    <li><button data-page="settings"><span class="ico">⚙️</span> Settings</button></li>
+  </ul></nav>
+  <div class="sidebar-foot">vFINALBOSS · Gemini build</div>
+</aside>
+
+<button id="menu-btn" aria-expanded="false" aria-controls="sidebar">☰ Menu</button>
+
+<main>
+  <section class="page active" id="page-dashboard">
+    <h1><span style="color:var(--accent);text-shadow:0 0 14px var(--accent);">🦊</span> <span>Neon</span><span style="color:var(--accent);text-shadow:0 0 14px var(--accent);">Kitsune</span></h1>
+    <p class="sub">Your anime hub, AI concierge, and clip machine — all in one.</p>
+    <div class="grid cols-3">
+      <div class="card clickable-card" onclick="go('watchlist')" role="button" tabindex="0"><div class="stat" id="stat-watch">0 <small>Watchlist titles</small></div></div>
+      <div class="card clickable-card" onclick="go('foxai')" role="button" tabindex="0"><div class="stat" id="stat-ai">— <small>Fox AI status</small></div></div>
+      <div class="card clickable-card" onclick="go('clips')" role="button" tabindex="0"><div class="stat">🎬 <small>Clip generator ready</small></div></div>
+    </div>
+    <h2>Quick actions</h2>
+    <div class="card" style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="primary" onclick="go('foxai')">Ask Fox AI</button>
+      <button class="ghost" onclick="go('clips')">Random clip</button>
+      <button class="ghost" onclick="go('watchlist')">Open watchlist</button>
+    </div>
+  </section>
+
+  <section class="page" id="page-foxai">
+    <h1>Fox AI</h1>
+    <p class="sub">Ask about any anime — it searches AniList and shows recommendations you can watch instantly.</p>
+    <div class="card">
+      <div id="chat-log"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" placeholder="Ask about any anime…" />
+        <button class="primary" id="chat-send">Send</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-watchlist">
+    <h1>Watchlist</h1>
+    <p class="sub">Tap Watch to play the trailer in-app.</p>
+    <div class="card">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="wl-input" placeholder="Add a title (e.g. Frieren)" style="flex:1;min-width:180px;" />
+        <button class="primary" id="wl-add">Add</button>
+      </div>
+    </div>
+    <div id="wl-list"></div>
+  </section>
+
+  <section class="page" id="page-clips">
+    <h1>Clip Generator</h1>
+    <p class="sub">Random anime clips, streamed right here.</p>
+    <div class="card">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <label class="field" style="margin:0;">Length</label>
+        <select id="clip-length" style="width:auto;">
+          <option value="15">15 seconds</option>
+          <option value="30" selected>30 seconds</option>
+          <option value="60">1 minute</option>
+        </select>
+        <button class="primary" id="clip-play">Play random clip</button>
+        <button class="ghost" id="clip-next">Next clip ▶</button>
+      </div>
+      <p class="sub" style="margin:12px 0 0; font-size:13px;" id="clip-title">Press play to start.</p>
+    </div>
+  </section>
+
+  <section class="page" id="page-roblox">
+    <h1>Roblox Dashboard</h1>
+    <p class="sub">A separate space for your Roblox profile. <span class="sim-badge">Simulation</span></p>
+    <div class="card">
+      <div class="roblox-card">
+        <div class="rbx-avatar" id="rbx-avatar">?</div>
+        <div style="flex:1; min-width:180px;">
+          <h2 style="margin:0 0 4px;" id="rbx-name">No account linked</h2>
+          <p class="sub" style="margin:0 0 10px;" id="rbx-desc">Link a Roblox account to see your character here.</p>
+          <button class="primary" id="rbx-link">Link account</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="rbx-stats" style="display:none;">
+      <div class="grid cols-3">
+        <div class="stat" id="rbx-friends">0 <small>Friends</small></div>
+        <div class="stat" id="rbx-visits">0 <small>Visits</small></div>
+        <div class="stat" id="rbx-fav">— <small>Fave game</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-settings">
+    <h1>Settings</h1>
+    <p class="sub">Tune the vibe.</p>
+    <div class="card">
+      <label class="field">Google AI Studio API key (saved only in this browser)</label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="api-key" type="password" placeholder="AIza..." style="flex:1;min-width:200px;" />
+        <button class="primary" id="save-key">Save key</button>
+        <button class="ghost" id="clear-key">Clear</button>
+      </div>
+      <p class="sub" style="margin:8px 0 18px; font-size:12px;">Get a key at aistudio.google.com/apikey. It never leaves your device.</p>
+
+      <label class="field">Background rotation (seconds per photo)</label>
+      <input id="set-bgsecs" type="number" min="3" max="120" value="5" />
+
+      <label class="field">Background brightness <span class="range-val" id="val-bright">1.10</span></label>
+      <input id="set-bgbright" type="range" min="0.4" max="1.6" step="0.05" value="1.1" />
+
+      <label class="field">Panel transparency <span class="range-val" id="val-alpha">0.55</span></label>
+      <input id="set-alpha" type="range" min="0.10" max="0.95" step="0.05" value="0.55" />
+      <p class="sub" style="margin:4px 0 0; font-size:12px;">Lower = more see-through.</p>
+
+      <label class="field">Accent color</label>
+      <select id="set-accent">
+        <option value="#ff2e88">Neon Pink</option>
+        <option value="#22e6ff">Cyber Cyan</option>
+        <option value="#a855f7">Fox Purple</option>
+        <option value="#ffb02e">Ember Orange</option>
+      </select>
+
+      <label class="field">Default clip length</label>
+      <select id="set-clipdefault">
+        <option value="15">15 seconds</option>
+        <option value="30" selected>30 seconds</option>
+        <option value="60">1 minute</option>
+      </select>
+
+      <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+        <button class="primary" id="set-save">Save settings</button>
+        <button class="ghost" id="set-wipe">Clear all local data</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="modal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head"><h3 id="modal-title">Player</h3><button class="ghost" id="modal-close">✕</button></div>
+    <div class="player-wrap" id="player-wrap"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const ANIME_CLIPS = [
+  { type:"youtube", id:"4f4GvO9g0QY", start:0, end:30, title:"Demon Slayer" },
+  { type:"youtube", id:"k4YR6Zb0F5w", start:0, end:30, title:"Jujutsu Kaisen" },
+  { type:"youtube", id:"1a4D5gM3i0A", start:0, end:30, title:"Attack on Titan" },
+  { type:"youtube", id:"MGRm4IzK1SQ", start:0, end:30, title:"Spy x Family" },
+  { type:"youtube", id:"6vMuWuWlW4I", start:0, end:30, title:"Chainsaw Man" }
+];
+const ROBLOX_PROXY_URL = "";
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const ANILIST_URL = "https://graphql.anilist.co";
+const NEKOSIA_URL = "https://api.nekosia.cat/api/v1/images/catgirl?count=10&rating=safe";
+
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem("nk_"+k); return v?JSON.parse(v):d; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem("nk_"+k,JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem("nk_"+k); }catch{} },
+  clearAll(){ Object.keys(localStorage).filter(k=>k.startsWith("nk_")).forEach(k=>localStorage.removeItem(k)); }
+};
+
+/* ---------- Sidebar ---------- */
+const sidebar=document.getElementById("sidebar"), menuBtn=document.getElementById("menu-btn");
+function toggleSidebar(force){
+  const open=typeof force==="boolean"?force:!sidebar.classList.contains("open");
+  sidebar.classList.toggle("open",open);
+  document.body.classList.toggle("sidebar-open",open);
+  sidebar.setAttribute("aria-hidden",String(!open));
+  menuBtn.setAttribute("aria-expanded",String(open));
+}
+menuBtn.addEventListener("click",()=>toggleSidebar());
+document.getElementById("sidebar-close").addEventListener("click",()=>toggleSidebar(false));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ toggleSidebar(false); closeModal(); } });
+
+function go(page){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("page-"+page)?.classList.add("active");
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  if(window.innerWidth<900) toggleSidebar(false);
+  window.scrollTo({top:0,behavior:"smooth"});
+  if(page==="watchlist") renderWatchlist();
+  if(page==="dashboard") renderStats();
+}
+document.querySelectorAll(".nav button").forEach(b=>b.addEventListener("click",()=>go(b.dataset.page)));
+
+/* ---------- Clickable stat cards (keyboard support) ---------- */
+document.querySelectorAll(".clickable-card").forEach(c=>{
+  c.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); c.click(); } });
+});
+
+/* ---------- Backgrounds ---------- */
+let bgIndex=0, bgTimer=null, validBgs=[];
+const bgStack=document.getElementById("bg-stack");
+async function initBackgrounds(){
+  const secs=store.get("bgsecs",5)*1000;
+  bgStack.innerHTML=""; validBgs=[];
+  try{
+    const res=await fetch(NEKOSIA_URL);
+    const data=await res.json();
+    const imgs=(data.images||[]).map(i=>i.image?.original?.url || i.image?.compressed?.url).filter(Boolean);
+    if(imgs.length){ validBgs=imgs; startBgLoop(secs); }
+  }catch(e){ console.warn("Nekosia fetch failed",e); }
+}
+function startBgLoop(secs){
+  if(bgTimer) clearInterval(bgTimer);
+  bgStack.innerHTML="";
+  validBgs.forEach((url,i)=>{
+    const d=document.createElement("div");
+    d.className="bg-layer"+(i===0?" on":"");
+    d.style.backgroundImage=`url("${url}")`;
+    bgStack.appendChild(d);
+  });
+  bgIndex=0;
+  bgTimer=setInterval(()=>{
+    const layers=bgStack.querySelectorAll(".bg-layer");
+    if(!layers.length) return;
+    layers[bgIndex].classList.remove("on");
+    bgIndex=(bgIndex+1)%layers.length;
+    layers[bgIndex].classList.add("on");
+  },secs);
+}
+
+/* ---------- Player ---------- */
+const modal=document.getElementById("modal"), playerWrap=document.getElementById("player-wrap"), modalTitle=document.getElementById("modal-title");
+function openModal(title){ modalTitle.textContent=title||"Player"; modal.classList.add("open"); }
+function closeModal(){ modal.classList.remove("open"); playerWrap.innerHTML=""; }
+document.getElementById("modal-close").addEventListener("click",closeModal);
+modal.addEventListener("click",e=>{ if(e.target===modal) closeModal(); });
+
+function playYouTube(id,start=0,end=0,title="Trailer"){
+  const params=new URLSearchParams({autoplay:"1",rel:"0",modestbranding:"1",playsinline:"1"});
+  if(start) params.set("start",start);
+  if(end) params.set("end",end);
+  const ytLink=`https://www.youtube.com/watch?v=${id}${start?"&t="+start+"s":""}`;
+
+  playerWrap.innerHTML=`
+    <iframe id="yt-iframe"
+      src="https://www.youtube-nocookie.com/embed/${id}?${params}"
+      allow="autoplay; encrypted-media; picture-in-picture"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="player-fallback" id="yt-fallback" style="display:none;">
+      <p>YouTube blocks embedded playback when this file is opened directly from your device (file://).</p>
+      <p>To watch inside the app, host this file on Netlify Drop or a local server.</p>
+      <a class="primary" href="${ytLink}" target="_blank" rel="noopener" style="text-decoration:none;padding:10px 16px;border-radius:10px;">▶ Open on YouTube</a>
+    </div>`;
+  openModal(title);
+
+  setTimeout(()=>{
+    const fb=document.getElementById("yt-fallback");
+    const ifr=document.getElementById("yt-iframe");
+    if(!fb||!ifr) return;
+    if(location.protocol==="file:"){
+      ifr.style.display="none";
+      fb.style.display="flex";
+    }
+  },1500);
+}
+
+/* ---------- Watchlist ---------- */
+function getWatchlist(){ return store.get("watchlist",[]); }
+function setWatchlist(v){ store.set("watchlist",v); renderWatchlist(); renderStats(); }
+document.getElementById("wl-add").addEventListener("click",addFromInput);
+document.getElementById("wl-input").addEventListener("keydown",e=>{ if(e.key==="Enter") addFromInput(); });
+function addFromInput(){
+  const inp=document.getElementById("wl-input"), name=inp.value.trim();
+  if(!name) return;
+  const wl=getWatchlist();
+  if(!wl.find(x=>x.title.toLowerCase()===name.toLowerCase())){ wl.push({title:name,added:Date.now()}); setWatchlist(wl); }
+  inp.value="";
+}
+function renderWatchlist(){
+  const el=document.getElementById("wl-list"), wl=getWatchlist();
+  if(!wl.length){ el.innerHTML=`<p class="empty">Nothing here yet. Add a title above.</p>`; return; }
+  el.innerHTML=wl.map((item,i)=>`
+    <div class="list-item">
+      <div class="meta"><strong>${escapeHtml(item.title)}</strong><span>Added ${new Date(item.added).toLocaleDateString()}</span></div>
+      <div class="actions">
+        <button class="primary" onclick="watchTrailer(${i})">▶ Watch</button>
+        <button class="ghost" onclick="removeWatch(${i})">Remove</button>
+      </div>
+    </div>`).join("");
+}
+function removeWatch(i){ const wl=getWatchlist(); wl.splice(i,1); setWatchlist(wl); }
+async function watchTrailer(i){
+  const title=getWatchlist()[i]?.title;
+  if(!title) return;
+  const hit=await anilistSearch(title);
+  if(hit&&hit.trailerId) playYouTube(hit.trailerId,0,0,hit.title+" — trailer");
+  else toast("No trailer found for "+title);
+}
+
+/* ---------- Clips ---------- */
+let lastClipIdx=-1;
+document.getElementById("clip-play").addEventListener("click",playRandomClip);
+document.getElementById("clip-next").addEventListener("click",playRandomClip);
+function playRandomClip(){
+  if(!ANIME_CLIPS.length) return toast("No clips configured.");
+  let idx;
+  do{ idx=Math.floor(Math.random()*ANIME_CLIPS.length); }while(ANIME_CLIPS.length>1&&idx===lastClipIdx);
+  lastClipIdx=idx;
+  const clip=ANIME_CLIPS[idx];
+  const len=parseInt(document.getElementById("clip-length").value,10);
+  const end=clip.start+len;
+  document.getElementById("clip-title").textContent="▶ "+clip.title+" ("+len+"s)";
+  playYouTube(clip.id,clip.start,end,clip.title);
+}
+
+/* ---------- Roblox sim ---------- */
+document.getElementById("rbx-link").addEventListener("click",mockRobloxLink);
+function mockRobloxLink(){
+  const btn=document.getElementById("rbx-link");
+  btn.disabled=true; btn.innerHTML=`<span class="spinner"></span> Linking…`;
+  setTimeout(()=>{
+    document.getElementById("rbx-avatar").textContent="G";
+    document.getElementById("rbx-name").textContent="Guest_Fox_07";
+    document.getElementById("rbx-desc").textContent="Simulated account — real linking needs a backend.";
+    document.getElementById("rbx-friends").innerHTML="42 <small>Friends</small>";
+    document.getElementById("rbx-visits").innerHTML="1287 <small>Visits</small>";
+    document.getElementById("rbx-fav").innerHTML="Tower of Hell <small>Fave game</small>";
+    document.getElementById("rbx-stats").style.display="block";
+    btn.disabled=false; btn.textContent="Refresh profile";
+    toast("Roblox profile loaded (simulation)");
+  },1400);
+}
+
+/* ---------- Settings ---------- */
+function applyAlpha(a){ document.documentElement.style.setProperty("--panel-alpha", a); }
+function applyBright(b){ document.documentElement.style.setProperty("--bg-brightness", b); }
+
+document.getElementById("set-bgbright").addEventListener("input",e=>{
+  applyBright(e.target.value);
+  document.getElementById("val-bright").textContent=parseFloat(e.target.value).toFixed(2);
+});
+document.getElementById("set-alpha").addEventListener("input",e=>{
+  applyAlpha(e.target.value);
+  document.getElementById("val-alpha").textContent=parseFloat(e.target.value).toFixed(2);
+});
+
+document.getElementById("set-save").addEventListener("click",saveSettings);
+document.getElementById("set-wipe").addEventListener("click",()=>{
+  if(!confirm("Clear all local data (watchlist, key, settings)?")) return;
+  store.clearAll();
+  toast("Local data cleared. Reloading…");
+  setTimeout(()=>location.reload(),700);
+});
+
+function loadSettings(){
+  const bgsecs=store.get("bgsecs",5);
+  const bgbright=store.get("bgbright",1.1);
+  const alpha=store.get("alpha",0.55);
+  const accent=store.get("accent","#ff2e88");
+  const clipdefault=store.get("clipdefault",30);
+  document.getElementById("set-bgsecs").value=bgsecs;
+  document.getElementById("set-bgbright").value=bgbright;
+  document.getElementById("set-alpha").value=alpha;
+  document.getElementById("set-accent").value=accent;
+  document.getElementById("set-clipdefault").value=clipdefault;
+  document.getElementById("clip-length").value=clipdefault;
+  document.getElementById("val-bright").textContent=parseFloat(bgbright).toFixed(2);
+  document.getElementById("val-alpha").textContent=parseFloat(alpha).toFixed(2);
+  applyBright(bgbright);
+  applyAlpha(alpha);
+  document.documentElement.style.setProperty("--accent",accent);
+}
+
+function saveSettings(){
+  const bgsecs=Math.max(3,Math.min(120,parseInt(document.getElementById("set-bgsecs").value,10)||5));
+  const bgbright=parseFloat(document.getElementById("set-bgbright").value)||1.1;
+  const alpha=parseFloat(document.getElementById("set-alpha").value)||0.55;
+  const accent=document.getElementById("set-accent").value;
+  const clipdefault=parseInt(document.getElementById("set-clipdefault").value,10)||30;
+  store.set("bgsecs",bgsecs);
+  store.set("bgbright",bgbright);
+  store.set("alpha",alpha);
+  store.set("accent",accent);
+  store.set("clipdefault",clipdefault);
+  applyBright(bgbright);
+  applyAlpha(alpha);
+  document.documentElement.style.setProperty("--accent",accent);
+  document.getElementById("clip-length").value=clipdefault;
+  initBackgrounds();
+  toast("Settings saved");
+}
+
+/* ---------- Fox AI ---------- */
+const chatLog=document.getElementById("chat-log"), chatInput=document.getElementById("chat-input");
+const keyInput=document.getElementById("api-key");
+keyInput.value=store.get("apikey","");
+document.getElementById("save-key").addEventListener("click",()=>{
+  const k=keyInput.value.trim();
+  if(!k) return toast("Paste a key first");
+  store.set("apikey",k);
+  toast("API key saved locally");
+  renderStats();
+});
+document.getElementById("clear-key").addEventListener("click",()=>{
+  store.del("apikey"); keyInput.value=""; toast("API key cleared"); renderStats();
+});
+document.getElementById("chat-send").addEventListener("click",sendChat);
+chatInput.addEventListener("keydown",e=>{ if(e.key==="Enter") sendChat(); });
+
+const SYSTEM_PROMPT=`You are Fox AI, an anime expert for a 12-year-old kid.
+You ONLY talk about anime — shows, characters, plots, powers, studios, genres, recommendations, anime terminology, and anime culture.
+If the user asks about anything non-anime (homework, news, games, personal advice, etc.), gently steer them back to anime in one short sentence. Do not lecture.
+You know anime deeply — characters, arcs, powers, fights, plot details, studio history, genres, tropes, and terminology across all eras.
+If you are genuinely unsure about a very recent episode or a brand-new show past your knowledge, say so honestly in one sentence instead of guessing. Never invent plot details.
+Keep replies SHORT (2-4 sentences max), warm, kid-safe, and fun.
+When the app shows recommendation cards below your reply, write just one short sentence — don't repeat the titles.`;
+
+const ANILIST_QUERY=`query($search:String){Page(perPage:4){media(search:$search,type:ANIME){id title{romaji english}description(asHtml:false)averageScore seasonYear coverImage{medium}trailer{id site}}}}`;
+
+async function anilistSearch(term){
+  try{
+    const res=await fetch(ANILIST_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify({query:ANILIST_QUERY,variables:{search:term}})
+    });
+    const data=await res.json();
+    const media=data?.data?.Page?.media||[];
+    if(!media.length) return null;
+    return {
+      title:media[0].title.english||media[0].title.romaji,
+      trailerId:media[0].trailer?.site==="youtube"?media[0].trailer.id:null,
+      all:media.map(x=>({
+        title:x.title.english||x.title.romaji,
+        cover:x.coverImage?.medium,
+        description:(x.description||"").replace(/<[^>]+>/g,"").slice(0,200),
+        score:x.averageScore,
+        year:x.seasonYear,
+        trailerId:x.trailer?.site==="youtube"?x.trailer.id:null
+      }))
+    };
+  }catch(e){ return null; }
+}
+
+function pushUser(t){
+  const d=document.createElement("div");
+  d.className="msg user"; d.textContent=t;
+  chatLog.appendChild(d); chatLog.scrollTop=chatLog.scrollHeight;
+}
+function pushBot(t,animes=[]){
+  const d=document.createElement("div");
+  d.className="msg bot"; d.textContent=t;
+  if(animes.length){
+    const list=document.createElement("div");
+    list.className="rec-list";
+    animes.forEach((a,i)=>{
+      const card=document.createElement("div");
+      card.className="rec-card";
+      card.innerHTML=`
+        <div class="rec-head">
+          <img src="${a.cover||''}" alt=""/>
+          <div class="info">
+            <strong>${escapeHtml(a.title)}</strong>
+            <span>${a.score?("★ "+a.score):""} ${a.year||""}</span>
+          </div>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="rec-body">
+          ${escapeHtml(a.description||"No description available.")}
+          <br/>
+          <button class="primary" data-watch>▶ Watch trailer</button>
+        </div>`;
+      card.querySelector(".rec-head").addEventListener("click",()=>card.classList.toggle("open"));
+      card.querySelector("[data-watch]").addEventListener("click",()=>{
+        if(a.trailerId) playYouTube(a.trailerId,0,0,a.title+" — trailer");
+        else toast("No trailer available for this title.");
+      });
+      list.appendChild(card);
+    });
+    d.appendChild(list);
+  }
+  chatLog.appendChild(d);
+  chatLog.scrollTop=chatLog.scrollHeight;
+}
+
+async function sendChat(){
+  const text=chatInput.value.trim();
+  if(!text) return;
+  const key=store.get("apikey","");
+  pushUser(text);
+  chatInput.value="";
+  if(!key){ pushBot("I need a Google AI Studio API key first. Paste one in Settings and tap Save."); return; }
+  pushBot("…thinking");
+
+  try{
+    const hit=await anilistSearch(text);
+    const animes=hit?.all||[];
+
+    let context="";
+    if(animes.length){
+      context=`\n\nAniList search results for "${text}":\n`+
+        animes.map(a=>`- ${a.title}${a.year?" ("+a.year+")":""}${a.score?" — score "+a.score:""}`).join("\n")+
+        `\n\nWrite ONE short friendly sentence about these results. Don't list the titles again — the cards will show them.`;
+    }
+
+    const messages=[
+      {role:"system",content:SYSTEM_PROMPT},
+      {role:"user",content:text+context}
+    ];
+
+    const resp=await fetch(GEMINI_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model:GEMINI_MODEL,messages,max_tokens:400})
+    });
+    if(!resp.ok){ const t=await resp.text(); throw new Error(`Gemini ${resp.status}: ${t.slice(0,200)}`); }
+    const data=await resp.json();
+    const out=(data.choices?.[0]?.message?.content||"").trim();
+
+    const thinking=[...chatLog.querySelectorAll(".msg.bot")].pop();
+    if(thinking&&thinking.textContent==="…thinking") thinking.remove();
+
+    pushBot(out||"Here you go!",animes);
+  }catch(err){
+    const thinking=[...chatLog.querySelectorAll(".msg.bot")].pop();
+    if(thinking&&thinking.textContent==="…thinking") thinking.remove();
+    pushBot("Error: "+(err.message||"request failed"));
+  }
+}
+
+/* ---------- Helpers ---------- */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+const toastEl=document.getElementById("toast");
+let toastTimer;
+function toast(msg){
+  toastEl.textContent=msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200);
+}
+function renderStats(){
+  document.getElementById("stat-watch").innerHTML=`${getWatchlist().length} <small>Watchlist titles</small>`;
+  document.getElementById("stat-ai").innerHTML=`${store.get("apikey","")?"Live":"Locked"} <small>Fox AI status</small>`;
+}
